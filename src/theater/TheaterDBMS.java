@@ -210,9 +210,26 @@ public class TheaterDBMS {
 				{
 					theater.message.performanceNoExist(id);
 				} else {
-					String sql = "DELETE FROM performance where id=" + id;
-					PreparedStatement stmt = conn.prepareStatement(sql);
+					
+					// check if build_id of deleted record is not null.
+					String sql0 = "SELECT build_id FROM performance where build_id is not null and id="+id;
+					PreparedStatement stmt = conn.prepareStatement(sql0);
 					ResultSet rs = stmt.executeQuery();
+					if(rs.next()) // if build_id is not null
+					{
+						//count down assigned attribute.
+						String sql1 ="UPDATE building SET assigned=assigned-1 WHERE id="+rs.getInt("build_id");
+						PreparedStatement stmt1 = conn.prepareStatement(sql1);
+						ResultSet rs1 = stmt1.executeQuery();
+					}
+					// delete performance record
+					String sql = "DELETE FROM performance where id=" + id;
+					stmt = conn.prepareStatement(sql);
+					rs = stmt.executeQuery();					
+					
+					
+					
+					
 					theater.message.performanceRemoved();
 				}
 			} catch (SQLException e) {
@@ -311,10 +328,15 @@ public class TheaterDBMS {
 					theater.message.performanceAlreadyAssigned(id);
 					return;
 				}
-				
+				// assign build_id attribute in performance.
 				String sql = "UPDATE performance SET build_id=" + build_id + " where id=" + id;
 				PreparedStatement stmt = conn.prepareStatement(sql);
 				ResultSet rs = stmt.executeQuery();
+				// count up the assigned attribute in building.
+				String sql1 = "UPDATE building SET assigned=assigned+1 where id="+build_id;
+				PreparedStatement stmt1 = conn.prepareStatement(sql1);
+				ResultSet rs1 = stmt1.executeQuery();
+				
 				theater.message.performanceAssign();
 				
 			} catch (SQLException e) {
@@ -324,7 +346,7 @@ public class TheaterDBMS {
 
 		if (i == 15) // end the program
 		{
-			System.out.println("Dfdd");
+			theater.message.exitProgram();
 			System.exit(0);
 		}
 	}
