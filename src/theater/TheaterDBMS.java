@@ -189,6 +189,8 @@ public class TheaterDBMS {
 				PreparedStatement stmt = conn.prepareStatement(sql);
 				ResultSet rs = stmt.executeQuery();
 				theater.message.performanceInserted();
+				
+				
 
 			} catch (SQLException e) {
 				System.out.println("Error in 6. insert the performance.");
@@ -311,7 +313,7 @@ public class TheaterDBMS {
 				scan = new Scanner(System.in);
 				id = scan.nextInt();
 				
-				String testSql2 = "SELECT * FROM building where id="+id;
+				String testSql2 = "SELECT capacity FROM building where id="+id;
 				PreparedStatement testStmt2 = conn.prepareStatement(testSql2);
 				ResultSet testRs2 = testStmt2.executeQuery();
 				if(!testRs2.next())
@@ -319,6 +321,7 @@ public class TheaterDBMS {
 					theater.message.performanceNoExist(id);
 					return;
 				}
+				int capacity = testRs2.getInt("capacity");
 
 				String testSql = "SELECT * FROM performance where id=" + id + " and build_id IS NULL";
 				PreparedStatement testStmt = conn.prepareStatement(testSql);
@@ -336,6 +339,13 @@ public class TheaterDBMS {
 				String sql1 = "UPDATE building SET assigned=assigned+1 where id="+build_id;
 				PreparedStatement stmt1 = conn.prepareStatement(sql1);
 				ResultSet rs1 = stmt1.executeQuery();
+				// insert booked_list table seat_number, performance_id
+				for(int seat_num = 1; seat_num<=capacity ; seat_num++)
+				{
+					sql = "INSERT INTO booked_list(performance_id, seat_number) values("+id+", "+seat_num+")";
+					stmt = conn.prepareStatement(sql);
+					rs = stmt.executeQuery();
+				}
 				
 				theater.message.performanceAssign();
 				
@@ -343,7 +353,190 @@ public class TheaterDBMS {
 				System.out.println("Error in 10. match the building with performance");
 			}
 		}
+		
+		if(i==11) // book the performance
+		{
+			int performance_id;
+			int audience_id;
+			int age;
+			int ticket_count = 0;
+			int price;
+			double total;
+			try{
+				
+				System.out.print("Performance ID: ");
+				Scanner scan = new Scanner(System.in);
+				performance_id = scan.nextInt();
+				
+				String sql = "SELECT * FROM performance where id="+performance_id;
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery();
+				if(!rs.next()) // if no performance ID
+				{
+					theater.message.performanceNoExist(performance_id);
+					return;
+				}
+				//price
+				price = rs.getInt("price");
+				
+				System.out.print("Audience ID: ");
+				scan = new Scanner(System.in);
+				audience_id = scan.nextInt();
+				
+				sql = "SELECT * FROM audience where id="+audience_id;
+				stmt = conn.prepareStatement(sql);
+				rs = stmt.executeQuery();
+				if(!rs.next()) // if no audience ID
+				{
+					theater.message.audienceNoExist(audience_id);
+					return;
+				}
+				//age
+				age = rs.getInt("age");
+				
+				System.out.print("Seat number: ");
+				scan = new Scanner(System.in);
+				String seat_list = scan.nextLine();
+				seat_list.replaceAll("\\s+", "");
+				ArrayList<Integer> seat_list_array = new ArrayList<Integer>(); // seat number
+				for(String seat : seat_list.split(",") )
+				{
+					int seat_int = Integer.parseInt(seat);
+					seat_list_array.add(seat_int);
+				}
+				
+				for(int j=0; j< seat_list_array.size() ; j++)
+				{
+					int seat_num = seat_list_array.get(j);
+					
+					//check if this seat number is exist or not occupied.
+					sql = "SELECT * FROM booked_list where seat_number="+seat_num+" and performance_id="+performance_id;
+					stmt = conn.prepareStatement(sql);
+					rs = stmt.executeQuery();
+					if(rs.next())
+					{
+						if(rs.getInt("audience_id") != 0)
+						{
+							theater.message.seatAlreadyTaken();
+							return;
+						}
+					}
+					else
+					{
+						theater.message.seatNumRange();
+						return;
+					}
+				}
+				
+				//update the booked_list
+				for(int j=0; j< seat_list_array.size() ; j++)
+				{
+					int seat_num = seat_list_array.get(j);
+					
+					//check if this seat number is exist or not occupied.
+					sql = "SELECT * FROM booked_list where seat_number="+seat_num+" and performance_id="+performance_id;
+					stmt = conn.prepareStatement(sql);
+					rs = stmt.executeQuery();
+					
+					if(rs.next())
+					{
+						if(rs.getInt("audience_id") == 0)
+						{ 	//it it is OK, book the seat
+							sql = "UPDATE booked_list SET audience_id="+audience_id+" WHERE seat_number="+seat_num+" and performance_id="+performance_id;
+							stmt = conn.prepareStatement(sql);
+							rs = stmt.executeQuery();
+							ticket_count++;
+						}
+						
+					}
+					else
+					{
+						theater.message.seatNumRange();
+						return;
+					}
+				}
+				// calculate the price
+				
+				if(age>=1 && age <=7)
+				{
+					total = 0;
+				}
+				else if(age >=8 && age <=12)
+				{
+					total = ticket_count*price*0.5;
+				}
+				else if(age >=13 && age <= 18)
+				{
+					total = ticket_count*price*0.8;
+				}
+				else
+				{
+					total = ticket_count*price;
+				}
+				
+				theater.message.bookSuccess(price);
 
+				
+				
+			} catch(SQLException e){System.out.println("Error in 11. book the performance");}
+		}
+		
+		if(i==12) // print all performances which assigned in certain building.
+		{
+			try
+			{
+				System.out.print("Building ID: ");
+				Scanner scan = new Scanner(System.in);
+				int build_id = scan.nextInt();
+				
+				String sql = "SELECT * FROM performance WHERE build_id="+build_id;
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery();
+				if(!rs.next()) // if building is not exist
+				{
+					theater.message.buildingNoExist(build_id);
+					return;
+				}
+				System.out.println("--------------------------------------------------------------------------------");
+				System.out.printf("%-10s%-25s%-15s%-15s%-15s\n", "id", "name", "type", "price", "booked");
+				System.out.println("--------------------------------------------------------------------------------");
+				
+				do{
+					performance perf = new performance();
+					perf.setId(rs.getInt("id"));
+					perf.setName(rs.getString("name"));
+					perf.setType(rs.getString("type"));
+					perf.setPrice(rs.getInt("price"));
+					perf.setBooked(rs.getInt("booked"));
+					System.out.printf("%-10s%-25s%-15s%-15s%-15s\n", perf.id, perf.name, perf.type, perf.price,
+							perf.booked);
+				} while(rs.next());
+				System.out.println("--------------------------------------------------------------------------------");
+			} catch(SQLException e){System.out.println("Error in 12. print all performances which assigned in certain building.");}
+		}
+		
+		if(i==13) // print all audiences who book for performances.
+		{
+			try
+			{
+				System.out.print("Performance ID: ");
+				Scanner scan = new Scanner(System.in);
+				int id = scan.nextInt();
+				String sql = "SELECT * FROM performance where id="+id;
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery();
+				if(!rs.next()) // if no performance ID
+				{
+					theater.message.performanceNoExist(id);
+					return;
+				}
+				
+				
+				
+			}catch(SQLException e){System.out.println("Error in 13. print all audiences who book for performances.");}
+		}
+
+		
 		if (i == 15) // end the program
 		{
 			theater.message.exitProgram();
