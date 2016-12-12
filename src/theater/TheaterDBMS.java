@@ -298,12 +298,13 @@ public class TheaterDBMS {
 			try {
 				System.out.print("Building ID: ");
 				Scanner scan = new Scanner(System.in);
+				//get build_id
 				build_id = scan.nextInt();
 				
 				String testSql1 = "SELECT * FROM building where id="+build_id;
 				PreparedStatement testStmt1 = conn.prepareStatement(testSql1);
 				ResultSet testRs1 = testStmt1.executeQuery();
-				if(!testRs1.next())
+				if(!testRs1.next()) // if no building
 				{
 					theater.message.buildingNoExist(build_id);
 					return;
@@ -311,22 +312,29 @@ public class TheaterDBMS {
 
 				System.out.print("Performance ID: ");
 				scan = new Scanner(System.in);
+				//get id
 				id = scan.nextInt();
 				
-				String testSql2 = "SELECT capacity FROM building where id="+id;
-				PreparedStatement testStmt2 = conn.prepareStatement(testSql2);
-				ResultSet testRs2 = testStmt2.executeQuery();
-				if(!testRs2.next())
+				testSql1 = "SELECT * FROM performance where id="+id;
+				testStmt1 = conn.prepareStatement(testSql1);
+				testRs1 = testStmt1.executeQuery();
+				if(!testRs1.next()) //if no performance
 				{
 					theater.message.performanceNoExist(id);
 					return;
 				}
+				
+				String testSql2 = "SELECT capacity FROM building where id="+build_id;
+				PreparedStatement testStmt2 = conn.prepareStatement(testSql2);
+				ResultSet testRs2 = testStmt2.executeQuery();
+				testRs2.next();
+				// get capacity
 				int capacity = testRs2.getInt("capacity");
 
 				String testSql = "SELECT * FROM performance where id=" + id + " and build_id IS NULL";
 				PreparedStatement testStmt = conn.prepareStatement(testSql);
 				ResultSet testRs = testStmt.executeQuery();
-				if (!testRs.next())
+				if (!testRs.next()) // if performance is already assigned building
 				{
 					theater.message.performanceAlreadyAssigned(id);
 					return;
@@ -379,6 +387,15 @@ public class TheaterDBMS {
 				//price
 				price = rs.getInt("price");
 				
+				sql = "SELECT * FROM performance where id=" + performance_id + " and build_id IS NOT NULL";
+				stmt = conn.prepareStatement(sql);
+				rs = stmt.executeQuery();
+				if (!rs.next()) // if performance is not assigned building
+				{
+					theater.message.performanceNotAssigned(performance_id);
+					return;
+				}
+				
 				System.out.print("Audience ID: ");
 				scan = new Scanner(System.in);
 				audience_id = scan.nextInt();
@@ -397,7 +414,7 @@ public class TheaterDBMS {
 				System.out.print("Seat number: ");
 				scan = new Scanner(System.in);
 				String seat_list = scan.nextLine();
-				seat_list.replaceAll("\\s+", "");
+				seat_list = seat_list.replaceAll("\\s+", "");
 				ArrayList<Integer> seat_list_array = new ArrayList<Integer>(); // seat number
 				for(String seat : seat_list.split(",") )
 				{
@@ -456,7 +473,6 @@ public class TheaterDBMS {
 					}
 				}
 				// calculate the price
-				
 				if(age>=1 && age <=7)
 				{
 					total = 0;
@@ -474,7 +490,7 @@ public class TheaterDBMS {
 					total = ticket_count*price;
 				}
 				
-				theater.message.bookSuccess(price);
+				theater.message.bookSuccess((int)total);
 
 				
 				
@@ -531,11 +547,80 @@ public class TheaterDBMS {
 					return;
 				}
 				
+			
+				sql = "SELECT DISTINCT id, name, gender, age FROM audience natural join booked_list where performance_id="+id;
+				stmt = conn.prepareStatement(sql);
+				rs = stmt.executeQuery();
 				
-				
+				System.out.println("--------------------------------------------------------------------------------");
+				System.out.printf("%-10s%-25s%-15s%-15s\n", "id", "name", "gender", "age");
+				System.out.println("--------------------------------------------------------------------------------");
+				audience aud = new audience();
+				while(rs.next())
+				{
+					aud.setId(rs.getInt("id"));
+					aud.setName(rs.getString("name"));
+					aud.setGender(rs.getString("gender"));
+					aud.setAge(rs.getInt("age"));
+					System.out.printf("%-10s%-25s%-15s%-15s\n", aud.id, aud.name, aud.gender, aud.age);
+				}
+				System.out.println("--------------------------------------------------------------------------------");
+
 			}catch(SQLException e){System.out.println("Error in 13. print all audiences who book for performances.");}
 		}
 
+		if(i==14) // print ticket booking status of a performance
+		{
+			try
+			{
+				System.out.print("Performance ID: ");
+				Scanner scan = new Scanner(System.in);
+				int id = scan.nextInt();
+				String sql = "SELECT * FROM performance where id="+id;
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery();
+				if(!rs.next()) // if no performance ID
+				{
+					theater.message.performanceNoExist(id);
+					return;
+				}
+				
+				sql = "SELECT build_id FROM performance where id="+id+" and build_id is not null";
+				stmt = conn.prepareStatement(sql);
+				rs = stmt.executeQuery();
+				if(!rs.next()) // if no build_id
+				{
+					theater.message.performanceNotAssigned(id);
+					return;
+				}
+				
+				sql = "SELECT seat_number, audience_id FROM booked_list where performance_id="+id+" ORDER BY seat_number ASC";
+				stmt = conn.prepareStatement(sql);
+				rs = stmt.executeQuery();
+				System.out.println("--------------------------------------------------------------------------------");
+				System.out.printf("%-15s%-15s\n", "seat_number", "audience_id");
+				System.out.println("--------------------------------------------------------------------------------");
+				
+				while(rs.next())
+				{
+					int seat_number;
+					int audience_id;
+					seat_number = rs.getInt("seat_number");
+					audience_id = rs.getInt("audience_id");
+					if(audience_id == 0)
+					{
+						System.out.printf("%-15s\n", seat_number);
+					}
+					else
+					{
+						System.out.printf("%-15s%-15s\n", seat_number, audience_id);
+					}
+				}
+				System.out.println("--------------------------------------------------------------------------------");
+				
+				
+			}catch(SQLException e){System.out.println("Error in 14. print ticket booking status of a performance.");}
+		}
 		
 		if (i == 15) // end the program
 		{
