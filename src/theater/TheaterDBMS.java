@@ -273,18 +273,34 @@ public class TheaterDBMS {
 				System.out.print("Audience ID that you want to delete: ");
 				Scanner scan = new Scanner(System.in);
 				int id = scan.nextInt();
-				String testSql = "SELECT * FROM audience where id=" + id;
-				PreparedStatement testStmt = conn.prepareStatement(testSql);
-				ResultSet testRs = testStmt.executeQuery();
-				if (!testRs.next()) // if id no exists
+				String sql = "SELECT * FROM audience where id=" + id;
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery();
+				if (!rs.next()) // if id no exists
 				{
 					theater.message.audienceNoExist(id);
-				} else {
-					String sql = "DELETE FROM audience where id=" + id;
-					PreparedStatement stmt = conn.prepareStatement(sql);
-					ResultSet rs = stmt.executeQuery();
-					theater.message.audienceRemoved();
+					return;
 				}
+				
+				sql = "SELECT * FROM booked_list WHERE audience_id="+id;
+				stmt = conn.prepareStatement(sql);
+				rs = stmt.executeQuery();
+				while(rs.next()) // count down the booked.
+				{
+					int p_id = rs.getInt("performance_id");
+					String testsql = "UPDATE performance SET booked=booked-1 WHERE id="+p_id;
+					PreparedStatement teststmt = conn.prepareStatement(testsql);
+					ResultSet testrs = teststmt.executeQuery();
+				}
+				
+				sql = "DELETE FROM audience where id=" + id;
+				stmt = conn.prepareStatement(sql);
+				rs = stmt.executeQuery();
+				theater.message.audienceRemoved();
+				
+				
+				
+				
 			} catch (SQLException e) {
 				System.out.println("Error in 9. delete the audience.");
 			}
@@ -462,6 +478,11 @@ public class TheaterDBMS {
 							sql = "UPDATE booked_list SET audience_id="+audience_id+" WHERE seat_number="+seat_num+" and performance_id="+performance_id;
 							stmt = conn.prepareStatement(sql);
 							rs = stmt.executeQuery();
+							// count up the booked
+							sql = "UPDATE performance SET booked=booked+1 WHERE id="+performance_id;
+							stmt = conn.prepareStatement(sql);
+							rs = stmt.executeQuery();
+							
 							ticket_count++;
 						}
 						
@@ -505,7 +526,7 @@ public class TheaterDBMS {
 				Scanner scan = new Scanner(System.in);
 				int build_id = scan.nextInt();
 				
-				String sql = "SELECT * FROM performance WHERE build_id="+build_id;
+				String sql = "SELECT * FROM building WHERE id="+build_id;
 				PreparedStatement stmt = conn.prepareStatement(sql);
 				ResultSet rs = stmt.executeQuery();
 				if(!rs.next()) // if building is not exist
@@ -513,11 +534,16 @@ public class TheaterDBMS {
 					theater.message.buildingNoExist(build_id);
 					return;
 				}
+				
+				sql = "SELECT * FROM performance WHERE build_id="+build_id;
+				stmt = conn.prepareStatement(sql);
+				rs = stmt.executeQuery();
+				
 				System.out.println("--------------------------------------------------------------------------------");
 				System.out.printf("%-10s%-25s%-15s%-15s%-15s\n", "id", "name", "type", "price", "booked");
 				System.out.println("--------------------------------------------------------------------------------");
 				
-				do{
+				while(rs.next()){
 					performance perf = new performance();
 					perf.setId(rs.getInt("id"));
 					perf.setName(rs.getString("name"));
@@ -526,7 +552,7 @@ public class TheaterDBMS {
 					perf.setBooked(rs.getInt("booked"));
 					System.out.printf("%-10s%-25s%-15s%-15s%-15s\n", perf.id, perf.name, perf.type, perf.price,
 							perf.booked);
-				} while(rs.next());
+				}
 				System.out.println("--------------------------------------------------------------------------------");
 			} catch(SQLException e){System.out.println("Error in 12. print all performances which assigned in certain building.");}
 		}
