@@ -67,7 +67,7 @@ public class TheaterDBMS {
 			}
 
 		}
-		if (i == 2) // print all performances.
+		else if (i == 2) // print all performances.
 		{
 			String sql = "SELECT * FROM performance";
 			try {
@@ -92,7 +92,7 @@ public class TheaterDBMS {
 			}
 
 		}
-		if (i == 3) // print all audiences.
+		else if (i == 3) // print all audiences.
 		{
 
 			String sql = "SELECT * FROM audience";
@@ -116,7 +116,7 @@ public class TheaterDBMS {
 			}
 		}
 
-		if (i == 4) // insert the building.
+		else if (i == 4) // insert the building.
 		{
 			building build = new building();
 			try {
@@ -128,7 +128,12 @@ public class TheaterDBMS {
 				build.setLocation(scan.nextLine().toString());
 				System.out.print("Building capacity: ");
 				scan = new Scanner(System.in);
-				build.setCapacity(Integer.parseInt(scan.nextLine()));
+				int capacity = Integer.parseInt(scan.nextLine());
+				build.setCapacity(capacity);
+				if(capacity < 1)
+				{
+					return;
+				}
 				build.setAssigned(0); // the default of assigned is 0
 				String sql = "INSERT INTO building(name, location, capacity, assigned) values('" + build.name + "', '"
 						+ build.location + "', " + build.capacity + ", " + build.assigned + ")";
@@ -142,7 +147,7 @@ public class TheaterDBMS {
 			}
 
 		}
-		if (i == 5) // delete the building.
+		else if (i == 5) // delete the building.
 		{
 
 			try {
@@ -155,31 +160,61 @@ public class TheaterDBMS {
 				if (!testRs.next()) // if id no exists
 				{
 					theater.message.buildingNoExist(id);
-				} else {
-					String sql = "DELETE FROM building where id=" + id;
-					PreparedStatement stmt = conn.prepareStatement(sql);
-					ResultSet rs = stmt.executeQuery();
-					theater.message.buildingRemoved();
+					return;
 				}
+				
+				String sql = "SELECT DISTINCT performance_id FROM booked_list join performance on(id=performance_id) WHERE build_id="+id;
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery();
+				while(rs.next())
+				{
+					int p_id = rs.getInt("performance_id");
+					//reset the booked seat to null
+					String subSql = "UPDATE booked_list SET audience_id = NULL WHERE performance_id="+p_id;
+					PreparedStatement subStmt = conn.prepareStatement(subSql);
+					ResultSet subRs = subStmt.executeQuery();
+					//set the booked to 0
+					subSql = "UPDATE performance SET booked=0 WHERE id="+p_id;
+					subStmt = conn.prepareStatement(subSql);
+					subRs = subStmt.executeQuery();
+				}
+				
+				
+				
+				//delete the building
+				sql = "DELETE FROM building where id=" + id;
+				stmt = conn.prepareStatement(sql);
+				rs = stmt.executeQuery();
+				theater.message.buildingRemoved();
+				
 			} catch (SQLException e) {
 				System.out.println("Error in 5. delete the building.");
 			}
 
 		}
 
-		if (i == 6) // insert the performance.
+		else if (i == 6) // insert the performance.
 		{
 			performance perf = new performance();
 			try {
 				System.out.print("Performance name: ");
 				Scanner scan = new Scanner(System.in);
-				perf.setName(scan.nextLine().toString());
+				String name = scan.nextLine().toString();
+				perf.setName(name);
+				
 				System.out.print("Performance type: ");
 				scan = new Scanner(System.in);
-				perf.setType(scan.nextLine().toString());
+				String type = scan.nextLine().toString();
+				perf.setType(type);
+				
 				System.out.print("Performance price: ");
 				scan = new Scanner(System.in);
-				perf.setPrice(Integer.parseInt(scan.nextLine()));
+				int price = Integer.parseInt(scan.nextLine());
+				perf.setPrice(price);
+				if(price < 0)
+				{
+					return;
+				}
 				perf.setBooked(0); // the default of assigned is 0
 									// how about perf.build_id?? I wanna make it
 									// default null.
@@ -198,7 +233,7 @@ public class TheaterDBMS {
 
 		}
 
-		if (i == 7) // delete the performance.
+		else if (i == 7) // delete the performance.
 		{
 
 			try {
@@ -240,19 +275,32 @@ public class TheaterDBMS {
 
 		}
 
-		if (i == 8) // insert the audience.
+		else if (i == 8) // insert the audience.
 		{
 			audience aud = new audience();
 			try {
 				System.out.print("Audience name: ");
 				Scanner scan = new Scanner(System.in);
-				aud.setName(scan.nextLine().toString());
+				String name = scan.nextLine().toString();
+				aud.setName(name);
+				
 				System.out.print("Audience gender: ");
 				scan = new Scanner(System.in);
-				aud.setGender(scan.nextLine().toString());
+				String gender = scan.nextLine().toString();
+				aud.setGender(gender);
+				if(!(new String("M").equals(gender) || new String("F").equals(gender)))
+				{
+					return;
+				}
+				
 				System.out.print("Audience age: ");
 				scan = new Scanner(System.in);
-				aud.setAge(Integer.parseInt(scan.nextLine()));
+				int age = Integer.parseInt(scan.nextLine());
+				aud.setAge(age);
+				if(age < 1)
+				{
+					return;
+				}
 				String sql = "INSERT INTO audience(name, gender, age) values('" + aud.name + "', '" + aud.gender + "', "
 						+ aud.age + ")";
 
@@ -266,7 +314,7 @@ public class TheaterDBMS {
 
 		}
 
-		if (i == 9) // delete the audience.
+		else if (i == 9) // delete the audience.
 		{
 
 			try {
@@ -307,7 +355,7 @@ public class TheaterDBMS {
 
 		}
 
-		if (i == 10) // match the building with performance
+		else if (i == 10) // match the building with performance
 		{
 			int id;
 			int build_id;
@@ -363,7 +411,19 @@ public class TheaterDBMS {
 				String sql1 = "UPDATE building SET assigned=assigned+1 where id="+build_id;
 				PreparedStatement stmt1 = conn.prepareStatement(sql1);
 				ResultSet rs1 = stmt1.executeQuery();
+				
+				//delete if previous matching building exist
+				sql1 = "SELECT * FROM booked_list WHERE performance_id="+id;
+				stmt1 = conn.prepareStatement(sql1);
+				rs1 = stmt1.executeQuery();
+				if(rs1.next())
+				{
+					String subSql = "DELETE FROM booked_list WHERE performance_id="+id;
+					PreparedStatement subStmt = conn.prepareStatement(subSql);
+					ResultSet subRs = subStmt.executeQuery();
+				}
 				// insert booked_list table seat_number, performance_id
+
 				for(int seat_num = 1; seat_num<=capacity ; seat_num++)
 				{
 					sql = "INSERT INTO booked_list(performance_id, seat_number) values("+id+", "+seat_num+")";
@@ -378,7 +438,7 @@ public class TheaterDBMS {
 			}
 		}
 		
-		if(i==11) // book the performance
+		else if(i==11) // book the performance
 		{
 			int performance_id;
 			int audience_id;
@@ -518,7 +578,7 @@ public class TheaterDBMS {
 			} catch(SQLException e){System.out.println("Error in 11. book the performance");}
 		}
 		
-		if(i==12) // print all performances which assigned in certain building.
+		else if(i==12) // print all performances which assigned in certain building.
 		{
 			try
 			{
@@ -557,7 +617,7 @@ public class TheaterDBMS {
 			} catch(SQLException e){System.out.println("Error in 12. print all performances which assigned in certain building.");}
 		}
 		
-		if(i==13) // print all audiences who book for performances.
+		else if(i==13) // print all audiences who book for performances.
 		{
 			try
 			{
@@ -574,7 +634,7 @@ public class TheaterDBMS {
 				}
 				
 			
-				sql = "SELECT DISTINCT id, name, gender, age FROM audience natural join booked_list where performance_id="+id;
+				sql = "SELECT DISTINCT id, name, gender, age FROM audience join booked_list on(id=audience_id) where performance_id="+id;
 				stmt = conn.prepareStatement(sql);
 				rs = stmt.executeQuery();
 				
@@ -595,7 +655,7 @@ public class TheaterDBMS {
 			}catch(SQLException e){System.out.println("Error in 13. print all audiences who book for performances.");}
 		}
 
-		if(i==14) // print ticket booking status of a performance
+		else if(i==14) // print ticket booking status of a performance
 		{
 			try
 			{
@@ -648,10 +708,35 @@ public class TheaterDBMS {
 			}catch(SQLException e){System.out.println("Error in 14. print ticket booking status of a performance.");}
 		}
 		
-		if (i == 15) // end the program
+		else if (i == 15) // end the program
 		{
 			theater.message.exitProgram();
 			System.exit(0);
+		}
+		
+		else if(i==16) //for debugging
+		{
+			try{
+			String sql = "select * from booked_list";
+			PreparedStatement stmt = conn.prepareStatement(sql);
+			ResultSet rs = stmt.executeQuery();
+			System.out.printf("%-15s%-15s%-15s\n", "performance_id", "audience_id", "seat_number");
+
+			while(rs.next())
+			{
+				int p_id = rs.getInt("performance_id");
+				int a_id = rs.getInt("audience_id");
+				int s_num = rs.getInt("seat_number");
+				
+				System.out.printf("%-15s%-15s%-15s\n", p_id, a_id, s_num);
+			}
+			}
+			catch(SQLException e){}
+		}
+		
+		else
+		{
+			theater.message.menuSelectError();
 		}
 	}
 }
