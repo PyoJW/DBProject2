@@ -48,7 +48,7 @@ public class message {
 	
 	public static void priceRange()
 	{
-		System.out.println("Price should be more than 0");
+		System.out.println("Price should be 0 or more");
 	}
 	
 	public static void performanceAssign()
