@@ -62,6 +62,7 @@ public class TheaterDBMS {
 							build.capacity, build.assigned);
 
 				}
+				System.out.println("--------------------------------------------------------------------------------");
 			} catch (SQLException e) {
 				System.out.println("Error in 1. print all buildings");
 			}
@@ -87,6 +88,7 @@ public class TheaterDBMS {
 							perf.booked);
 
 				}
+				System.out.println("--------------------------------------------------------------------------------");
 			} catch (SQLException e) {
 				System.out.println("Error in 2. print all performances");
 			}
@@ -111,6 +113,7 @@ public class TheaterDBMS {
 					System.out.printf("%-10s%-25s%-15s%-15s\n", aud.id, aud.name, aud.gender, aud.age);
 
 				}
+				System.out.println("--------------------------------------------------------------------------------");
 			} catch (SQLException e) {
 				System.out.println("Error in 3. print all audiences");
 			}
@@ -714,7 +717,7 @@ public class TheaterDBMS {
 			System.exit(0);
 		}
 		
-		else if(i==16) //for debugging
+		/*else if(i==16) //for debugging
 		{
 			try{
 			String sql = "select * from booked_list";
@@ -733,7 +736,7 @@ public class TheaterDBMS {
 			}
 			catch(SQLException e){}
 		}
-		
+		*/
 		else
 		{
 			theater.message.menuSelectError();
